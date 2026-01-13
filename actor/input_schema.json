@@ -1,0 +1,41 @@
+{
+  "title": "TikTok FYP Scraper (Python)",
+  "type": "object",
+  "schemaVersion": 1,
+  "description": "Scrapes up to N unique videos from your TikTok FYP using Playwright and a saved login session.",
+  "properties": {
+    "maxVideos": {
+      "title": "Max videos",
+      "type": "integer",
+      "description": "Maximum number of unique videos to collect.",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 500,
+      "editor": "number"
+    },
+    "delayMs": {
+      "title": "Delay between videos (ms)",
+      "type": "integer",
+      "description": "Wait time between scrolling to the next video.",
+      "default": 1200,
+      "minimum": 200,
+      "maximum": 10000,
+      "editor": "number"
+    },
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Run Chromium headless mode.",
+      "default": true,
+      "editor": "checkbox"
+    },
+    "storageStateKey": {
+      "title": "Storage state key",
+      "type": "string",
+      "description": "Key in Apify Key-Value Store containing Playwright storageState JSON.",
+      "default": "tiktok_state.json",
+      "editor": "textfield"
+    }
+  },
+  "required": ["storageStateKey"]
+}
