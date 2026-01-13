@@ -179,4 +179,4 @@ async def run(max_videos: int = 100, delay_ms: int = 450) -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    asyncio.run(run(max_videos=10))
