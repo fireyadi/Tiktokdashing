@@ -44,6 +44,7 @@ TRENDING_BATCH = 25
 SLEEP_BETWEEN_REQUESTS = 1.0
 
 OUTPUT_PREFIX = "microtrends"
+SOUND_HYDRATION_SUFFIX = "sound_hydration"
 
 BIG_ACCOUNTS_FILE = "big_accounts.txt"
 HASHTAGS_FILE = "seed_hashtags.txt"
@@ -633,16 +634,23 @@ async def main() -> None:
         print("4) Collect sound videos...")
         sound_rows = await collect_sounds(api, all_sounds[:MAX_SOUNDS_TO_CHECK], PER_SOUND_LIMIT)
 
-        print("5) Hydrate sound stats...")
-        sound_ids = sorted({(r.get("music") or {}).get("id") for r in trending_rows if (r.get("music") or {}).get("id")})
-        sound_meta = await collect_sound_info(api, sound_ids)
+        print("5) Capture all sounds from API responses...")
+        discovered_sound_ids = sorted(
+            {
+                (r.get("music") or {}).get("id")
+                for r in (trending_rows + account_rows + hashtag_rows + sound_rows)
+                if (r.get("music") or {}).get("id")
+            }
+        )
+        added_sounds_from_api = write_lines_append_dedup(SOUNDS_FILE, discovered_sound_ids)
+
+        # Reload sounds after adding everything discovered via the API
+        all_sounds = [s.strip() for s in read_lines(SOUNDS_FILE)]
+
+        print("6) Hydrate seeded sound stats...")
+        sound_meta = await collect_sound_info(api, all_sounds)
 
     merged = dedupe_merge(trending_rows + account_rows + hashtag_rows + sound_rows)
-
-    for r in merged:
-        sid = (r.get("music") or {}).get("id")
-        if sid and sid in sound_meta:
-            r.setdefault("music", {})["video_count"] = sound_meta[sid].get("video_count")
 
     add_pool_level_scores(merged, set(all_accounts))
     merged.sort(key=lambda r: float(r.get("score") or 0.0), reverse=True)
@@ -675,6 +683,7 @@ async def main() -> None:
                 "added_hashtags_from_suggest_phrases": added_tags_from_suggest,
                 "added_suggest_words": added_suggest,
                 "added_sounds": added_sounds,
+                "added_sounds_from_api": added_sounds_from_api,
                 "files": {
                     "big_accounts": BIG_ACCOUNTS_FILE,
                     "seed_hashtags": HASHTAGS_FILE,
@@ -694,15 +703,32 @@ async def main() -> None:
             "elapsed_seconds": round(finished - started, 3),
         },
         "topics": top_topics(merged, k=25),
-        "sound_meta": sound_meta,
-        "emerging_sounds": emerging_sounds,
         "items": merged,
     }
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
+    sound_out_path = f"{OUTPUT_PREFIX}_{date}_{SOUND_HYDRATION_SUFFIX}.json"
+    sound_output = {
+        "meta": {
+            "date": date,
+            "ms_token_present": bool(MS_TOKEN),
+            "proxy_present": bool(AU_PROXY),
+            "sound_count": len(all_sounds),
+            "hydrated": len(sound_meta),
+            "source_file": SOUNDS_FILE,
+            "elapsed_seconds": round(finished - started, 3),
+        },
+        "items": list(sound_meta.values()),
+        "emerging_sounds": emerging_sounds,
+    }
+
+    with open(sound_out_path, "w", encoding="utf-8") as f:
+        json.dump(sound_output, f, ensure_ascii=False, indent=2)
+
     print(f"\nSaved {len(merged)} unique videos to {out_path}")
+    print(f"Saved {len(sound_meta)} sound records to {sound_out_path}")
 
 
 if __name__ == "__main__":

@@ -20,3 +20,12 @@ that have fewer than 1,000 videos overall.
 export ms_token="YOUR_MS_TOKEN"
 python tiktok_api_trending.py
 ```
+
+## Hydrate saved sound IDs
+If you already have a list of sound IDs (for example `seed_sounds.txt`), use
+`hydrate_sounds.py` to fetch how many videos use each sound.
+
+```bash
+export ms_token="YOUR_MS_TOKEN"
+python hydrate_sounds.py --input seed_sounds.txt --output sound_hydration.json
+```
